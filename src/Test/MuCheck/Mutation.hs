@@ -13,6 +13,7 @@ import Language.Haskell.Exts(Literal(Int, Char, Frac, String, PrimInt, PrimChar,
 import Data.Generics (Typeable, mkMp, listify)
 import Data.List(nub, (\\), permutations, partition)
 import Control.Monad (liftM)
+import qualified Test.Mendel.Mutation as M
 
 import Test.MuCheck.Tix
 import Test.MuCheck.MuOp

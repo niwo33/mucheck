@@ -1,0 +1,5 @@
+packages: MuCheck.cabal
+
+source-repository-package
+    type: git
+    location: https://github.com/BinderDavid/mendel.git
