@@ -30,6 +30,13 @@ genMutants ::
   -> IO (Int,[Mutant]) -- ^ Returns the covering mutants produced, and original length.
 genMutants = genMutantsWith defaultConfig
 
+-- TODO
+genMutantsMendel ::
+     FilePath           -- ^ The module we are mutating
+  -> FilePath           -- ^ Coverage information for the module
+  -> IO (Int,[MutantMendel]) -- ^ Returns the covering mutants produced, and original length.
+genMutantsMendel = genMutantsWithMendel defaultConfig
+
 -- | The `genMutantsWith` function takes configuration function to mutate,
 -- function to mutate, filename the function is defined in, and produces
 -- mutants in the same directory as the filename, and returns the number
@@ -55,6 +62,28 @@ genMutantsWith _config filename  tix = do
                             Nothing -> (-1, mutants)
                             Just v -> (length mutants, removeUncovered v mutants)
 
+-- TODO
+genMutantsWithMendel ::
+     Config                     -- ^ The configuration to be used
+  -> FilePath                   -- ^ The module we are mutating
+  -> FilePath                   -- ^ Coverage information for the module
+  -> IO (Int, [MutantMendel])         -- ^ Returns the covered mutants produced, and the original number
+genMutantsWithMendel _config filename  tix = do
+      f <- readFile filename
+
+      let modul = getModuleNameMendel (getASTFromStrMendel f)
+          mutants :: [MutantMendel]
+          mutants = genMutantsForSrcMendel defaultConfig f
+
+      -- We have a choice here. We could allow users to specify test specific
+      -- coverage rather than a single coverage. This can further reduce the
+      -- mutants.
+      c <- getUnCoveredPatches tix modul
+      -- check if the mutants span is within any of the covered spans.
+      return $ case c of
+                            Nothing -> (-1, mutants)
+                            Just v -> (length mutants, removeUncoveredMendel v mutants)
+
 -- | Remove mutants that are not covered by any tests
 removeUncovered :: [Span] -> [Mutant] -> [Mutant]
 removeUncovered uspans mutants = filter isMCovered mutants -- get only covering mutants.
@@ -62,10 +91,22 @@ removeUncovered uspans mutants = filter isMCovered mutants -- get only covering 
          -- | is it contained in any of the spans? if it is, then return false.
          isMCovered Mutant{..} = not $ any (insideSpan _mspan) uspans
 
+-- TODO
+removeUncoveredMendel :: [Span] -> [MutantMendel] -> [MutantMendel]
+removeUncoveredMendel uspans mutants = filter isMCovered mutants -- get only covering mutants.
+  where  isMCovered :: MutantMendel -> Bool
+         -- | is it contained in any of the spans? if it is, then return false.
+         isMCovered MutantMendel{..} = not $ any (insideSpan _mspanM) uspans
+
 -- | Get the module name from ast
 getModuleName :: Module t -> String
 getModuleName (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = name
 getModuleName _ = ""
+
+-- TODO
+getModuleNameMendel :: Module t -> String
+getModuleNameMendel (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = name
+getModuleNameMendel _ = ""
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
 -- is defined, and returns the mutated sources
@@ -74,6 +115,17 @@ genMutantsForSrc ::
   -> String                   -- ^ The module we are mutating
   -> [Mutant] -- ^ Returns the mutants
 genMutantsForSrc config src = map (toMutant . apTh (prettyPrint . withAnn)) $ programMutants config ast
+  where origAst = getASTFromStr src
+        (onlyAnn, noAnn) = splitAnnotations origAst
+        ast = putDecl origAst noAnn
+        withAnn mast = putDecl mast $ getDecl mast ++ onlyAnn
+
+-- TODO
+genMutantsForSrcMendel ::
+     Config                   -- ^ Configuration
+  -> String                   -- ^ The module we are mutating
+  -> [MutantMendel] -- ^ Returns the mutants
+genMutantsForSrcMendel config src = map (toMutantMendel . apTh (prettyPrint . withAnn)) $ programMutants config ast
   where origAst = getASTFromStr src
         (onlyAnn, noAnn) = splitAnnotations origAst
         ast = putDecl origAst noAnn
@@ -150,6 +202,10 @@ removeOneElem l = choose l (length l - 1)
 -- | Returns the AST from the file
 getASTFromStr :: String -> Module_
 getASTFromStr fname = fromParseResult $ parseModule fname
+
+--TODO
+getASTFromStrMendel :: String -> ModuleM_
+getASTFromStrMendel fname = fromParseResult $ parseModule fname
 
 -- | get all annotated functions
 getAnn :: Module_ -> String -> [String]

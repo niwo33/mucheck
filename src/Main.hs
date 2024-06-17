@@ -1,7 +1,7 @@
 module Main where
 import System.Environment (getArgs)
 
-import Test.MuCheck (mucheck)
+import Test.MuCheck (mucheck, mucheckMendel)
 import Test.MuCheck.TestAdapter.AssertCheckAdapter
 import Test.MuCheck.TestAdapter
 import Test.MuCheck.Utils.Print
@@ -11,10 +11,16 @@ main = do
   val <- getArgs
   case val of
     ("-h" : _ ) -> help
-    ("-tix" : tix: file: _ ) -> do (msum, _tsum) <- mucheck (toRun file :: AssertCheckRun) tix
+    -- Original Version
+    --("-tix" : tix: file: _ ) -> do (msum, _tsum) <- mucheck (toRun file :: AssertCheckRun) tix
+    --                               print msum
+    --(file : _args) -> do (msum, _tsum) <- mucheck (toRun file :: AssertCheckRun) []
+    --                     print msum
+    -- Version with Mendel
+    ("-tix" : tix: file: _ ) -> do (msum, _tsum) <- mucheckMendel (toRun file :: AssertCheckRun) tix
                                    print msum
-    (file : _args) -> do (msum, _tsum) <- mucheck (toRun file :: AssertCheckRun) []
-                         print msum
+    (file : _args) -> do (msum, _tsum) <- mucheckMendel (toRun file :: AssertCheckRun) []
+                         print msum                    
     _ -> error "Need function file [args]\n\tUse -h to get help"
 
 help :: IO ()

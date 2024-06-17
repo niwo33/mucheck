@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 -- | MuCheck base module
-module Test.MuCheck (mucheck) where
+module Test.MuCheck (mucheck, mucheckMendel) where
 
 import Control.Monad (liftM)
 import Test.MuCheck.Mutation
@@ -37,6 +37,25 @@ mucheck moduleFile tix = do
               _  -> fsum' {_maOriginalNumMutants = len, _maCoveredNumMutants = length mutants}
   return (fsum, msum)
 
+-- TODO
+mucheckMendel :: (Show b, Summarizable b, TRun a b) =>
+     a                                                     -- ^ The module we are mutating
+  -> FilePath                                              -- ^ The HPC <coverage>.tix file
+  -> IO (MAnalysisSummary, [MutantSummary])                -- ^ Returns a tuple of full summary, and individual mutant results.
+mucheckMendel moduleFile tix = do
+  -- get tix here.
+  (len, mutants) <- genMutantsMendel (getName moduleFile) tix
+  -- Should we do random sample on covering alone or on the full?
+  smutants <- samplerMendel defaultConfig mutants
+  tests <- getAllTests (getName moduleFile)
+  (fsum', msum) <- evaluateMutantsMendel moduleFile smutants (map (genTest moduleFile) tests)
+  -- set the original size of mutants. (We report the results based on original
+  -- number of mutants, not just the covered ones.)
+  let fsum = case len of
+              -1 -> fsum' {_maOriginalNumMutants = -1, _maCoveredNumMutants = -1}
+              _  -> fsum' {_maOriginalNumMutants = len, _maCoveredNumMutants = length mutants}
+  return (fsum, msum)
+
 -- | Wrapper around sampleF that returns correct sampling ratios according to
 -- configuration passed. TODO: Actually use the sampling configuration.
 sampler ::
@@ -52,7 +71,26 @@ sampler config mv = do
                                                     MutateOther []]
   rSample (maxNumMutants config) ms
 
+-- TODO
+samplerMendel ::
+     Config              -- ^ Configuration
+  -> [MutantMendel]            -- ^ The original list of mutation operators
+  -> IO [MutantMendel]            -- ^ Returns the sampled mutation operators
+samplerMendel config mv = do
+  ms <- liftM concat $ mapM (getSampledMendel config mv) [MutatePatternMatch,
+                                                          MutateValues,
+                                                          MutateFunctions,
+                                                          MutateNegateIfElse,
+                                                          MutateNegateGuards,
+                                                          MutateOther []]
+  rSample (maxNumMutants config) ms
+
 getSampled :: Config -> [Mutant] -> MuVar -> IO [Mutant]
 getSampled config ms muvar = rSampleF (getSample muvar config) $ filter (mutantIs muvar) ms
   where mutantIs mvar Mutant{..} = mvar `similar` _mtype
+
+-- TODO
+getSampledMendel :: Config -> [MutantMendel] -> MuVar -> IO [MutantMendel]
+getSampledMendel config ms muvar = rSampleF (getSample muvar config) $ filter (mutantIs muvar) ms
+  where mutantIs mvar MutantMendel{..} = mvar `similar` _mtypeM
 

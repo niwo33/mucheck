@@ -14,9 +14,17 @@ data Summarizable a => InterpreterOutput a = Io {_io :: Either I.InterpreterErro
 data Mutant = Mutant { _mutant::String, _mtype::MuVar, _mspan::Span}
   deriving (Eq, Show)
 
+-- TODO
+data MutantMendel = MutantMendel { _mutantM::String, _mtypeM::MuVar, _mspanM::Span}
+  deriving (Eq, Show)
+
 -- | Convert a tuple to a mutant
 toMutant :: (MuVar, Span, String) -> Mutant
 toMutant (m,s,str) = Mutant {_mutant = str, _mtype = m, _mspan = s}
+
+-- TODO
+toMutantMendel :: (MuVar, Span, String) -> MutantMendel
+toMutantMendel (m,s,str) = MutantMendel {_mutantM = str, _mtypeM = m, _mspanM = s}
 
 
 -- | Holding test information
