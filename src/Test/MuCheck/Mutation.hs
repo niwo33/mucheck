@@ -76,9 +76,9 @@ genMutantsWithMendel ::
   -> IO (Int, [MutantMendel])         -- ^ Returns the covered mutants produced, and the original number
 genMutantsWithMendel _config filename  tix = do
       f <- readFile filename
-      m <- M.parseModule filename 
+      -- m <- M.parseModule filename 
 
-      let modul = getModuleNameMendel m
+      let modul = getModuleNameMendel $ getASTFromStrMendel f
           mutants :: [MutantMendel]
           mutants = genMutantsForSrcMendel defaultConfig f
 
@@ -111,7 +111,7 @@ getModuleName (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = 
 getModuleName _ = ""
 
 -- TODO
-getModuleNameMendel :: ModuleM_ GHC.GhcPs -> String
+getModuleNameMendel :: ModuleM_ -> String
 getModuleNameMendel m = convertModuleName $ GHC.hsmodName m
 --getModuleNameMendel _ = ""
 
@@ -215,12 +215,12 @@ getASTFromStr :: String -> Module_
 getASTFromStr fname = fromParseResult $ parseModule fname
 
 --TODO
--- getASTFromStrMendel :: FilePath -> ModuleM_
--- getASTFromStrMendel fp = do 
---       m <- M.parseModule fp
---       case m of
---         (Just mod) -> mod
---         Nothing -> error 
+getASTFromStrMendel :: FilePath -> ModuleM_
+getASTFromStrMendel fp = do 
+      m <- M.parseModule fp
+      case m of
+        (Just (GHC.L _ modu)) -> modu
+        Nothing -> error "unable to parse"
 
 
 -- | get all annotated functions
