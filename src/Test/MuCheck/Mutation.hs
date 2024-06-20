@@ -111,12 +111,12 @@ getModuleName (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = 
 getModuleName _ = ""
 
 -- TODO
-getModuleNameMendel :: ModuleM_ t -> String
-getModuleNameMendel mod = convertModuleName $ GHC.hsmodName mod
-getModuleNameMendel _ = ""
+getModuleNameMendel :: ModuleM_ GHC.GhcPs -> String
+getModuleNameMendel m = convertModuleName $ GHC.hsmodName m
+--getModuleNameMendel _ = ""
 
-convertModuleName :: Maybe (GHC.XRec p GHC.ModuleName) -> String
-convertModuleName (Just (name)) = GHC.moduleNameString name
+convertModuleName :: Maybe (GHC.XRec GHC.GhcPs GHC.ModuleName) -> String
+convertModuleName (Just (GHC.L _ name)) = GHC.moduleNameString name
 convertModuleName Nothing = ""
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
@@ -215,12 +215,12 @@ getASTFromStr :: String -> Module_
 getASTFromStr fname = fromParseResult $ parseModule fname
 
 --TODO
-getASTFromStrMendel :: FilePath -> ModuleM_
-getASTFromStrMendel fp = do 
-      m <- M.parseModule fp
-      case m of
-        (Just mod) -> mod
-        Nothing -> error 
+-- getASTFromStrMendel :: FilePath -> ModuleM_
+-- getASTFromStrMendel fp = do 
+--       m <- M.parseModule fp
+--       case m of
+--         (Just mod) -> mod
+--         Nothing -> error 
 
 
 -- | get all annotated functions
