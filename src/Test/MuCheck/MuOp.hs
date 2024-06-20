@@ -26,6 +26,7 @@ import Control.Monad (MonadPlus, mzero)
  
 import Language.Haskell.Exts(Module, Name, QName, QOp, Exp, Decl, Literal, GuardedRhs, Annotation, SrcSpanInfo(..), srcSpanStart, srcSpanEnd, prettyPrint, Pretty(), Annotated(..))
 import GHC.Hs (HsModule)
+import qualified GHC.Hs as GHC
 
 -- | SrcSpanInfo wrapper
 type Module_ = Module SrcSpanInfo
@@ -47,7 +48,7 @@ type GuardedRhs_ = GuardedRhs SrcSpanInfo
 type Annotation_ = Annotation SrcSpanInfo
 
 -- TODO
-type ModuleM_ = HsModule
+type ModuleM_ = HsModule GHC.GhcPs
 type NameM_ = Name SrcSpanInfo
 type QNameM_ = QName SrcSpanInfo
 type QOpM_ = QOp SrcSpanInfo
