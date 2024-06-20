@@ -14,6 +14,7 @@ import Data.Generics (Typeable, mkMp, listify)
 import Data.List(nub, (\\), permutations, partition)
 import Control.Monad (liftM)
 import qualified Test.Mendel.Mutation as M
+import qualified Test.Mendel.Parser as M
 
 import Test.MuCheck.Tix
 import Test.MuCheck.MuOp
@@ -21,6 +22,11 @@ import Test.MuCheck.Utils.Syb
 import Test.MuCheck.Utils.Common
 import Test.MuCheck.Config
 import Test.MuCheck.TestAdapter
+
+-- ghc-lib-parser librarys
+import qualified GHC.Types.SrcLoc as GHC
+import qualified GHC.Hs as GHC
+import qualified GHC.Data.FastString as GHC
 
 -- | The `genMutants` function is a wrapper to genMutantsWith with standard
 -- configuraton
@@ -70,8 +76,9 @@ genMutantsWithMendel ::
   -> IO (Int, [MutantMendel])         -- ^ Returns the covered mutants produced, and the original number
 genMutantsWithMendel _config filename  tix = do
       f <- readFile filename
+      m <- M.parseModule filename 
 
-      let modul = getModuleNameMendel (getASTFromStrMendel f)
+      let modul = getModuleNameMendel m
           mutants :: [MutantMendel]
           mutants = genMutantsForSrcMendel defaultConfig f
 
@@ -104,9 +111,13 @@ getModuleName (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = 
 getModuleName _ = ""
 
 -- TODO
-getModuleNameMendel :: Module t -> String
-getModuleNameMendel (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = name
+getModuleNameMendel :: ModuleM_ t -> String
+getModuleNameMendel mod = convertModuleName $ GHC.hsmodName mod
 getModuleNameMendel _ = ""
+
+convertModuleName :: Maybe (GHC.XRec p GHC.ModuleName) -> String
+convertModuleName (Just (name)) = GHC.moduleNameString name
+convertModuleName Nothing = ""
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
 -- is defined, and returns the mutated sources
@@ -204,8 +215,13 @@ getASTFromStr :: String -> Module_
 getASTFromStr fname = fromParseResult $ parseModule fname
 
 --TODO
-getASTFromStrMendel :: String -> ModuleM_
-getASTFromStrMendel fname = fromParseResult $ parseModule fname
+getASTFromStrMendel :: FilePath -> ModuleM_
+getASTFromStrMendel fp = do 
+      m <- M.parseModule fp
+      case m of
+        (Just mod) -> mod
+        Nothing -> error 
+
 
 -- | get all annotated functions
 getAnn :: Module_ -> String -> [String]

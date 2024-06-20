@@ -1,28 +1,31 @@
 {-#  LANGUAGE Rank2Types, TypeSynonymInstances, FlexibleInstances, ConstraintKinds #-}
 -- | Mutation operators
-module Test.MuCheck.MuOp (MuOp
-          , Mutable(..)
-          , (==>*)
-          , (*==>*)
-          , (~~>)
-          , mkMpMuOp
-          , same
-          , Module_
-          , Name_
-          , QName_
-          , QOp_
-          , Exp_
-          , Decl_
-          , Literal_
-          , GuardedRhs_
-          , Annotation_
-          , getSpan
-          ) where
+-- module Test.MuCheck.MuOp (MuOp
+--           , Mutable(..)
+--           , (==>*)
+--           , (*==>*)
+--           , (~~>)
+--           , mkMpMuOp
+--           , same
+--           , Module_
+--           , Name_
+--           , QName_
+--           , QOp_
+--           , Exp_
+--           , Decl_
+--           , Literal_
+--           , GuardedRhs_
+--           , Annotation_
+--           , getSpan
+--           ) where
+
+module Test.MuCheck.MuOp where
 
 import qualified Data.Generics as G
 import Control.Monad (MonadPlus, mzero)
-
+ 
 import Language.Haskell.Exts(Module, Name, QName, QOp, Exp, Decl, Literal, GuardedRhs, Annotation, SrcSpanInfo(..), srcSpanStart, srcSpanEnd, prettyPrint, Pretty(), Annotated(..))
+import GHC.Hs (HsModule)
 
 -- | SrcSpanInfo wrapper
 type Module_ = Module SrcSpanInfo
@@ -43,6 +46,16 @@ type GuardedRhs_ = GuardedRhs SrcSpanInfo
 -- | SrcSpanInfo wrapper
 type Annotation_ = Annotation SrcSpanInfo
 
+-- TODO
+type ModuleM_ = HsModule
+type NameM_ = Name SrcSpanInfo
+type QNameM_ = QName SrcSpanInfo
+type QOpM_ = QOp SrcSpanInfo
+type ExpM_ = Exp SrcSpanInfo
+type DeclM_ = Decl SrcSpanInfo
+type LiteralM_ = Literal SrcSpanInfo
+type GuardedRhsM_ = GuardedRhs SrcSpanInfo
+type AnnotationM_ = Annotation SrcSpanInfo
 
 -- | MuOp constructor used to specify mutation transformation
 data MuOp = N  (Name_, Name_)
@@ -54,6 +67,15 @@ data MuOp = N  (Name_, Name_)
           | G  (GuardedRhs_, GuardedRhs_)
   deriving Eq
 
+data MuOpMendel = NMe  (NameM_, NameM_)
+          | QNMe (QNameM_, QNameM_)
+          | QOMe (QOpM_, QOpM_)
+          | EMe  (ExpM_, ExpM_)
+          | DMe  (DeclM_, DeclM_)
+          | LMe  (LiteralM_, LiteralM_)
+          | GMe  (GuardedRhsM_, GuardedRhsM_)
+  deriving Eq
+
 -- | Apply the given function on the tuple inside MuOp
 apply :: (forall a. (Eq a, G.Typeable a, Show a, Pretty a) => (a,a) -> c) -> MuOp -> c
 apply f (N  m) = f m
@@ -63,6 +85,15 @@ apply f (E  m) = f m
 apply f (D  m) = f m
 apply f (L  m) = f m
 apply f (G  m) = f m
+
+applyMendel :: (forall a. (Eq a, G.Typeable a, Show a, Pretty a) => (a,a) -> c) -> MuOpMendel -> c
+applyMendel f (NMe  m) = f m
+applyMendel f (QNMe m) = f m
+applyMendel f (QOMe m) = f m
+applyMendel f (EMe  m) = f m
+applyMendel f (DMe  m) = f m
+applyMendel f (LMe  m) = f m
+applyMendel f (GMe  m) = f m
 
 -- How do I get the Annotated (a SrcSpanInfo) on apply's signature?
 -- | getSpan retrieve the span as a tuple
