@@ -1,9 +1,9 @@
 {-# LANGUAGE RankNTypes #-}
 -- | SYB functions
-module Test.MuCheck.Utils.Syb (relevantOps, once) where
+module Test.MuCheck.Utils.Syb (relevantOps, relevantOpsMendel, once) where
 
 import Data.Generics (Data, GenericM, gmapMo)
-import Test.MuCheck.MuOp (mkMpMuOp, MuOp, same)
+import Test.MuCheck.MuOp (mkMpMuOp, mkMpMuOpMendel, MuOp, MuOpMendel, same, sameMendel)
 import Test.MuCheck.Config (MuVar)
 import Control.Monad (MonadPlus, mplus)
 import Data.Maybe(isJust)
@@ -22,3 +22,8 @@ relevantOps m oplst = filter (relevantOp m) $ filter (not . same . snd) oplst
   -- check if an operator can be applied to a program
   where relevantOp m' (_v, op) = isJust $ once (mkMpMuOp op) m'
 
+-- TODO
+relevantOpsMendel :: (Data a, Eq a) => a -> [(MuVar, MuOpMendel)] -> [(MuVar, MuOpMendel)]
+relevantOpsMendel m oplst = filter (relevantOp m) $ filter (not . sameMendel . snd) oplst
+  -- check if an operator can be applied to a program
+  where relevantOp m' (_v, op) = isJust $ once (mkMpMuOpMendel op) m'

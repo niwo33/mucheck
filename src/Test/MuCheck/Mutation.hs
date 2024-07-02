@@ -27,6 +27,8 @@ import Test.MuCheck.TestAdapter
 import qualified GHC.Types.SrcLoc as GHC
 import qualified GHC.Hs as GHC
 import qualified GHC.Data.FastString as GHC
+import qualified GHC.Types.Name.Reader as GHC
+import qualified GHC.Types.Name.Occurrence as GHC
 
 -- | The `genMutants` function is a wrapper to genMutantsWith with standard
 -- configuraton
@@ -77,10 +79,11 @@ genMutantsWithMendel ::
 genMutantsWithMendel _config filename  tix = do
       f <- readFile filename
       -- m <- M.parseModule filename 
+      ast <- getASTFromStrMendel filename
 
-      let modul = getModuleNameMendel $ getASTFromStrMendel f
+      let modul = getModuleNameMendel ast
           mutants :: [MutantMendel]
-          mutants = genMutantsForSrcMendel defaultConfig f
+          mutants = genMutantsForSrcMendel defaultConfig ast
 
       -- We have a choice here. We could allow users to specify test specific
       -- coverage rather than a single coverage. This can further reduce the
@@ -113,11 +116,9 @@ getModuleName _ = ""
 -- TODO
 getModuleNameMendel :: ModuleM_ -> String
 getModuleNameMendel m = convertModuleName $ GHC.hsmodName m
---getModuleNameMendel _ = ""
-
-convertModuleName :: Maybe (GHC.XRec GHC.GhcPs GHC.ModuleName) -> String
-convertModuleName (Just (GHC.L _ name)) = GHC.moduleNameString name
-convertModuleName Nothing = ""
+  where convertModuleName :: Maybe (GHC.XRec GHC.GhcPs GHC.ModuleName) -> String
+        convertModuleName (Just (GHC.L _ name)) = GHC.moduleNameString name
+        convertModuleName Nothing = ""
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
 -- is defined, and returns the mutated sources
@@ -134,13 +135,12 @@ genMutantsForSrc config src = map (toMutant . apTh (prettyPrint . withAnn)) $ pr
 -- TODO
 genMutantsForSrcMendel ::
      Config                   -- ^ Configuration
-  -> String                   -- ^ The module we are mutating
+  -> ModuleM_                 -- ^ The module we are mutating
   -> [MutantMendel] -- ^ Returns the mutants
-genMutantsForSrcMendel config src = map (toMutantMendel . apTh (prettyPrint . withAnn)) $ programMutants config ast
-  where origAst = getASTFromStr src
-        (onlyAnn, noAnn) = splitAnnotations origAst
-        ast = putDecl origAst noAnn
-        withAnn mast = putDecl mast $ getDecl mast ++ onlyAnn
+genMutantsForSrcMendel config origAst = map (toMutantMendel . apTh (prettyPrint . withAnn)) $ programMutantsMendel config ast
+  where (onlyAnn, noAnn) = splitAnnotationsMendel origAst
+        ast = putDeclMendel origAst noAnn
+        withAnn mast = putDeclMendel mast $ getDeclMendel mast ++ onlyAnn
 
 -- | Produce all mutants after applying all operators
 programMutants ::
@@ -148,6 +148,14 @@ programMutants ::
   -> Module_                  -- ^ Module to mutate
   -> [(MuVar, Span, Module_)] -- ^ Returns mutated modules
 programMutants config ast =  nub $ mutatesN (applicableOps config ast) ast fstOrder
+  where fstOrder = 1 -- first order
+
+-- | Produce all mutants after applying all operators
+programMutantsMendel ::
+     Config                   -- ^ Configuration
+  -> ModuleM_                 -- ^ Module to mutate
+  -> [(MuVar, Span, ModuleM_)] -- ^ Returns mutated modules
+programMutantsMendel config ast =  nub $ mutatesNMendel (applicableOpsMendel config ast) ast fstOrder
   where fstOrder = 1 -- first order
 
 -- | Returns all mutation operators
@@ -163,25 +171,58 @@ applicableOps config ast = relevantOps ast opsList
             (MutateNegateIfElse, selectIfElseBoolNegOps ast),
             (MutateNegateGuards, selectGuardedBoolNegOps ast)]
 
+-- TODO
+applicableOpsMendel ::
+     Config                   -- ^ Configuration
+  -> ModuleM_                 -- ^ Module to mutate
+  -> [(MuVar,MuOpMendel)]           -- ^ Returns mutation operators
+applicableOpsMendel config ast = relevantOpsMendel ast opsList
+  where opsList = concatMap spread [
+            --(MutatePatternMatch, selectFnMatches ast),
+            --(MutateValues, selectLiteralOps ast),
+            --(MutateFunctions, selectFunctionOps (muOp config) ast),
+            --(MutateNegateIfElse, selectIfElseBoolNegOps ast),
+            --(MutateNegateGuards, selectGuardedBoolNegOps ast)
+            ]
+
+
 -- | Split declarations of the module to annotated and non annotated.
 splitAnnotations :: Module_ -> ([Decl_], [Decl_])
 splitAnnotations ast = partition fn $ getDecl ast
   where fn x = (functionName x ++ pragmaName x) `elem` getAnnotatedTests ast
         -- only one of pragmaName or functionName will be present at a time.
 
+-- TODO
+splitAnnotationsMendel :: ModuleM_ -> ([DeclM_], [DeclM_])
+splitAnnotationsMendel ast = partition fn $ getDeclMendel ast
+  where fn x = (functionNameMendel x ++ pragmaNameMendel x) `elem` getAnnotatedTestsMendel ast
+
 -- | Returns the annotated tests and their annotations
 getAnnotatedTests :: Module_ -> [String]
 getAnnotatedTests ast = concatMap (getAnn ast) ["Test","TestSupport"]
+
+-- TODO
+getAnnotatedTestsMendel :: ModuleM_ -> [String]
+getAnnotatedTestsMendel ast = concatMap (getAnnMendel ast) ["Test","TestSupport"]
 
 -- | Get the embedded declarations from a module.
 getDecl :: Module_ -> [Decl_]
 getDecl (Module _ _ _ _ decls) = decls
 getDecl _ = []
 
+getDeclMendel :: ModuleM_ -> [DeclM_]
+getDeclMendel m = map unpackDecl $ GHC.hsmodDecls m
+  where unpackDecl :: GHC.LHsDecl GHC.GhcPs -> DeclM_
+        unpackDecl (GHC.L _ dec) = dec
+
 -- | Put the given declarations into the given module
 putDecl :: Module_ -> [Decl_] -> Module_
 putDecl (Module a b c d _) decls = Module a b c d decls
 putDecl m _ = m
+
+-- TODO
+putDeclMendel :: ModuleM_ -> [DeclM_] -> ModuleM_
+putDeclMendel m decls = m {GHC.hsmodDecls = map GHC.noLoc decls}
 
 -- | First and higher order mutation. The actual apply of mutation operators,
 -- and generation of mutants happens here.
@@ -195,12 +236,26 @@ mutatesN os ast n = mutatesN' os (MutateOther [], toSpan (0,0,0,0), ast) n
   where mutatesN' ops ms 1 = concat [mutate op ms | op <- ops ]
         mutatesN' ops ms c = concat [mutatesN' ops m 1 | m <- mutatesN' ops ms $ pred c]
 
+-- TODO
+mutatesNMendel ::
+     [(MuVar,MuOpMendel)]     -- ^ Applicable Operators
+  -> ModuleM_           -- ^ Module to mutate
+  -> Int                -- ^ Order of mutation (usually 1 - first order)
+  -> [(MuVar, Span, ModuleM_)] -- ^ Returns the mutated module
+mutatesNMendel os ast n = mutatesN' os (MutateOther [], toSpan (0,0,0,0), ast) n
+  where mutatesN' ops ms 1 = concat [mutateMendel op ms | op <- ops ]
+        mutatesN' ops ms c = concat [mutatesN' ops m 1 | m <- mutatesN' ops ms $ pred c]
+
 -- | Given a function, generate all mutants after applying applying
 -- op once (op might be applied at different places).
 -- E.g.: if the operator is (op = "<" ==> ">") and there are two instances of
 -- "<" in the AST, then it will return two AST with each replaced.
 mutate :: (MuVar, MuOp) -> (MuVar, Span, Module_) -> [(MuVar, Span, Module_)]
 mutate (v, op) (_v, _s, m) = map (v,toSpan $ getSpan op, ) $ once (mkMpMuOp op) m \\ [m]
+
+-- TODO
+mutateMendel :: (MuVar, MuOpMendel) -> (MuVar, Span, ModuleM_) -> [(MuVar, Span, ModuleM_)]
+mutateMendel (v, op) (_v, _s, m) = map (v,toSpan $ getSpan op, ) $ once (mkMpMuOpMendel op) m \\ [m]
 
 -- | Generate sub-arrays with one less element except when we have only
 -- a single element.
@@ -215,11 +270,11 @@ getASTFromStr :: String -> Module_
 getASTFromStr fname = fromParseResult $ parseModule fname
 
 --TODO
-getASTFromStrMendel :: FilePath -> ModuleM_
+getASTFromStrMendel :: FilePath -> IO ModuleM_
 getASTFromStrMendel fp = do 
       m <- M.parseModule fp
       case m of
-        (Just (GHC.L _ modu)) -> modu
+        (Just (GHC.L _ modu)) -> return modu
         Nothing -> error "unable to parse"
 
 
@@ -232,6 +287,15 @@ getAnn m s =  [conv name | Ann _l name _exp <- listify isAnn m]
         isAnn _ = False
         conv (Symbol _l n) = n
         conv (Ident _l n) = n
+
+-- TODO
+getAnnMendel :: ModuleM_ -> String -> [String]
+getAnnMendel m s =  [conv name | GHC.HsAnnotation _ (GHC.ValueAnnProvenance name) _ <- listify isAnn m]
+  where isAnn :: AnnotationM_ -> Bool 
+        isAnn (GHC.HsAnnotation _ (GHC.ValueAnnProvenance _) (GHC.L _ (GHC.HsLit _ (GHC.HsString _ e)))) = GHC.unpackFS e == s -- Ist Ann = ValueAnnProvenance ? Da es noch TypeAnn und ModuleAnn gibt
+        isAnn _ = False
+        -- conv :: GHC.GenLocated GHC.GhcPs GHC.RdrName -> String
+        conv (GHC.L _ n) = GHC.occNameString $ GHC.rdrNameOcc n
 
 -- | given the module name, return all marked tests
 getAllTests :: String -> IO [String]
@@ -249,10 +313,21 @@ functionName (FunBind _l (Match _ (Symbol _ls n) _ _ _ : _)) = n
 functionName (PatBind _ (PVar _lpv (Ident _li n)) _ _)          = n
 functionName _                                   = []
 
+-- Done
+functionNameMendel :: DeclM_ -> String
+functionNameMendel (GHC.ValD _ (GHC.FunBind _ (GHC.L _ n) _)) = GHC.occNameString $ GHC.rdrNameOcc n
+functionNameMendel (GHC.ValD _ (GHC.PatBind _ (GHC.L _ (GHC.VarPat _ (GHC.L _ n))) _)) = GHC.occNameString $ GHC.rdrNameOcc n
+functionNameMendel _ = []
+
 -- | The identifier of declared pragma
 pragmaName :: Decl_ -> String
 pragmaName (AnnPragma _ (Ann _l (Ident _li n) (Lit _ll (String _ls _t _)))) = n
 pragmaName _ = []
+
+-- Done 
+pragmaNameMendel :: DeclM_ -> String
+pragmaNameMendel (GHC.AnnD _ (GHC.HsAnnotation _ (GHC.ValueAnnProvenance (GHC.L _ n)) _)) = GHC.occNameString $ GHC.rdrNameOcc n
+pragmaNameMendel _ = []
 
 -- but not let, because it has a different type, and for our purposes
 -- this is sufficient.

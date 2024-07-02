@@ -25,8 +25,8 @@ import qualified Data.Generics as G
 import Control.Monad (MonadPlus, mzero)
  
 import Language.Haskell.Exts(Module, Name, QName, QOp, Exp, Decl, Literal, GuardedRhs, Annotation, SrcSpanInfo(..), srcSpanStart, srcSpanEnd, prettyPrint, Pretty(), Annotated(..))
-import GHC.Hs (HsModule)
-import qualified GHC.Hs as GHC
+import GHC.Hs (HsModule, HsDecl, AnnDecl, HsLit, GhcPs)
+--import qualified GHC.Hs as GHC
 
 -- | SrcSpanInfo wrapper
 type Module_ = Module SrcSpanInfo
@@ -48,15 +48,15 @@ type GuardedRhs_ = GuardedRhs SrcSpanInfo
 type Annotation_ = Annotation SrcSpanInfo
 
 -- TODO
-type ModuleM_ = HsModule GHC.GhcPs
+type ModuleM_ = HsModule GhcPs
 type NameM_ = Name SrcSpanInfo
 type QNameM_ = QName SrcSpanInfo
 type QOpM_ = QOp SrcSpanInfo
 type ExpM_ = Exp SrcSpanInfo
-type DeclM_ = Decl SrcSpanInfo
-type LiteralM_ = Literal SrcSpanInfo
+type DeclM_ = HsDecl GhcPs
+type LiteralM_ = HsLit GhcPs
 type GuardedRhsM_ = GuardedRhs SrcSpanInfo
-type AnnotationM_ = Annotation SrcSpanInfo
+type AnnotationM_ = AnnDecl GhcPs
 
 -- | MuOp constructor used to specify mutation transformation
 data MuOp = N  (Name_, Name_)
@@ -116,9 +116,16 @@ getSpan m = (startLine, startCol, endLine, endCol)
 same :: MuOp -> Bool
 same = apply $ uncurry (==)
 
+sameMendel :: MuOpMendel -> Bool
+sameMendel = applyMendel $ uncurry (==)
+
 -- | A wrapper over mkMp
 mkMpMuOp :: (MonadPlus m, G.Typeable a) => MuOp -> a -> m a
 mkMpMuOp = apply $ G.mkMp . uncurry (~~>)
+
+-- TODO
+mkMpMuOpMendel :: (MonadPlus m, G.Typeable a) => MuOpMendel -> a -> m a
+mkMpMuOpMendel = applyMendel $ G.mkMp . uncurry (~~>)
 
 -- | Show a specified mutation
 showM :: (Show a1, Show a, Pretty a, Pretty a1) => (a, a1) -> String
