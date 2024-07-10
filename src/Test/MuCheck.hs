@@ -6,7 +6,7 @@ import Control.Monad (liftM)
 import Test.MuCheck.Mutation
 import Test.MuCheck.Config
 import Test.MuCheck.Utils.Common
-import Test.MuCheck.Interpreter (evaluateMutants, MutantSummary(..))
+import Test.MuCheck.Interpreter (evaluateMutants, evaluateMutantsMendel, MutantSummary(..))
 import Test.MuCheck.TestAdapter
 import Test.MuCheck.AnalysisSummary
 

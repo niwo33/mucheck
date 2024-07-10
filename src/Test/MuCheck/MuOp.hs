@@ -27,6 +27,8 @@ import Control.Monad (MonadPlus, mzero)
 import Language.Haskell.Exts(Module, Name, QName, QOp, Exp, Decl, Literal, GuardedRhs, Annotation, SrcSpanInfo(..), srcSpanStart, srcSpanEnd, prettyPrint, Pretty(), Annotated(..))
 import GHC.Hs (HsModule, HsDecl, AnnDecl, HsLit, GhcPs)
 --import qualified GHC.Hs as GHC
+import Language.Haskell.Syntax.Lit
+import qualified GHC.Data.FastString as GHC
 
 -- | SrcSpanInfo wrapper
 type Module_ = Module SrcSpanInfo
@@ -75,7 +77,7 @@ data MuOpMendel = NMe  (NameM_, NameM_)
           | DMe  (DeclM_, DeclM_)
           | LMe  (LiteralM_, LiteralM_)
           | GMe  (GuardedRhsM_, GuardedRhsM_)
-  deriving Eq
+  -- deriving Eq
 
 -- | Apply the given function on the tuple inside MuOp
 apply :: (forall a. (Eq a, G.Typeable a, Show a, Pretty a) => (a,a) -> c) -> MuOp -> c
@@ -87,14 +89,14 @@ apply f (D  m) = f m
 apply f (L  m) = f m
 apply f (G  m) = f m
 
-applyMendel :: (forall a. (Eq a, G.Typeable a, Show a, Pretty a) => (a,a) -> c) -> MuOpMendel -> c
-applyMendel f (NMe  m) = f m
-applyMendel f (QNMe m) = f m
-applyMendel f (QOMe m) = f m
-applyMendel f (EMe  m) = f m
-applyMendel f (DMe  m) = f m
-applyMendel f (LMe  m) = f m
-applyMendel f (GMe  m) = f m
+-- applyMendel :: (forall a. (Eq a, G.Typeable a, Show a) => (a,a) -> c) -> MuOpMendel -> c
+-- applyMendel f (NMe  m) = f m
+-- applyMendel f (QNMe m) = f m
+-- applyMendel f (QOMe m) = f m
+-- applyMendel f (EMe  m) = f m
+-- applyMendel f (DMe  m) = f m
+-- applyMendel f (LMe  m) = f m
+-- applyMendel f (GMe  m) = f m
 
 -- How do I get the Annotated (a SrcSpanInfo) on apply's signature?
 -- | getSpan retrieve the span as a tuple
@@ -111,13 +113,22 @@ getSpan m = (startLine, startCol, endLine, endCol)
         getSpan' (G  (a,_)) = ann a
         lspan = srcInfoSpan $ getSpan' m
 
+getSpanMendel :: MuOpMendel -> (Int, Int, Int, Int)
+getSpanMendel m = undefined
+
 -- | The function `same` applies on a `MuOP` determining if transformation is
 -- between same values.
 same :: MuOp -> Bool
 same = apply $ uncurry (==)
 
 sameMendel :: MuOpMendel -> Bool
-sameMendel = applyMendel $ uncurry (==)
+sameMendel (NMe (x, y)) = x == y
+sameMendel (QNMe (x, y)) = x == y
+sameMendel (QOMe (x, y)) = x == y
+sameMendel (EMe (x, y)) = x == y
+sameMendel (DMe (x, y)) = False
+sameMendel (LMe (x, y)) = x == y
+sameMendel (GMe (x, y)) = x == y
 
 -- | A wrapper over mkMp
 mkMpMuOp :: (MonadPlus m, G.Typeable a) => MuOp -> a -> m a
@@ -125,7 +136,13 @@ mkMpMuOp = apply $ G.mkMp . uncurry (~~>)
 
 -- TODO
 mkMpMuOpMendel :: (MonadPlus m, G.Typeable a) => MuOpMendel -> a -> m a
-mkMpMuOpMendel = applyMendel $ G.mkMp . uncurry (~~>)
+mkMpMuOpMendel (NMe (x, y)) = G.mkMp (x ~~> y)
+mkMpMuOpMendel (QNMe (x, y)) = G.mkMp (x ~~> y)
+mkMpMuOpMendel (QOMe (x, y)) = G.mkMp (x ~~> y)
+mkMpMuOpMendel (EMe (x, y)) = G.mkMp (x ~~> y)
+mkMpMuOpMendel (DMe (x, y)) = undefined -- G.mkMp (x ~~> y)
+mkMpMuOpMendel (LMe (x, y)) = G.mkMp (x ~~> y)
+mkMpMuOpMendel (GMe (x, y)) = G.mkMp (x ~~> y)
 
 -- | Show a specified mutation
 showM :: (Show a1, Show a, Pretty a, Pretty a1) => (a, a1) -> String

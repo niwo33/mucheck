@@ -1,7 +1,7 @@
 {-# LANGUAGE TupleSections, MultiWayIf, DeriveDataTypeable, RecordWildCards #-}
 -- | The Interpreter module is responible for invoking the Hint interpreter to
 -- evaluate mutants.
-module Test.MuCheck.Interpreter (evaluateMutants, evalMethod, evalMutant, evalTest, summarizeResults, MutantSummary(..)) where
+module Test.MuCheck.Interpreter (evaluateMutants, evaluateMutantsMendel, evalMethod, evalMutant, evalTest, summarizeResults, MutantSummary(..)) where
 
 import qualified Language.Haskell.Interpreter as I
 import Control.Monad.Trans (liftIO)
@@ -35,6 +35,14 @@ evaluateMutants m mutants tests = do
   let singleTestSummaries = map (summarizeResults m tests) $ zip mutants results
       ma  = fullSummary m tests results
   return (ma, singleTestSummaries)
+
+-- TODO
+evaluateMutantsMendel :: (Show b, Summarizable b, TRun a b) =>
+     a                                                               -- ^ The module to be evaluated
+  -> [MutantMendel]                                                        -- ^ The mutants to be evaluated
+  -> [TestStr]                                                       -- ^ The tests to be used for analysis
+  -> IO (MAnalysisSummary, [MutantSummary])                          -- ^ Returns a tuple of full run summary and individual mutant summary
+evaluateMutantsMendel m mutants tests = undefined
 
 -- | The `summarizeResults` function evaluates the results of a test run
 -- using the supplied `isSuccess` and `testSummaryFn` functions from the adapters

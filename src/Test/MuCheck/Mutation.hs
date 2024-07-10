@@ -1,4 +1,4 @@
-{-# LANGUAGE ImpredicativeTypes, Rank2Types, TupleSections, RecordWildCards #-}
+{-# LANGUAGE ImpredicativeTypes, Rank2Types, TupleSections, RecordWildCards, PackageImports #-}
 -- | This module handles the mutation of different patterns.
 module Test.MuCheck.Mutation where
 
@@ -29,6 +29,7 @@ import qualified GHC.Hs as GHC
 import qualified GHC.Data.FastString as GHC
 import qualified GHC.Types.Name.Reader as GHC
 import qualified GHC.Types.Name.Occurrence as GHC
+import qualified "ghc-lib-parser" Language.Haskell.TH.Ppr as GHC
 
 -- | The `genMutants` function is a wrapper to genMutantsWith with standard
 -- configuraton
@@ -137,7 +138,7 @@ genMutantsForSrcMendel ::
      Config                   -- ^ Configuration
   -> ModuleM_                 -- ^ The module we are mutating
   -> [MutantMendel] -- ^ Returns the mutants
-genMutantsForSrcMendel config origAst = map (toMutantMendel . apTh (prettyPrint . withAnn)) $ programMutantsMendel config ast
+genMutantsForSrcMendel config origAst = undefined -- map (toMutantMendel . apTh (GHC.pprint . withAnn)) $ programMutantsMendel config ast
   where (onlyAnn, noAnn) = splitAnnotationsMendel origAst
         ast = putDeclMendel origAst noAnn
         withAnn mast = putDeclMendel mast $ getDeclMendel mast ++ onlyAnn
@@ -155,7 +156,7 @@ programMutantsMendel ::
      Config                   -- ^ Configuration
   -> ModuleM_                 -- ^ Module to mutate
   -> [(MuVar, Span, ModuleM_)] -- ^ Returns mutated modules
-programMutantsMendel config ast =  nub $ mutatesNMendel (applicableOpsMendel config ast) ast fstOrder
+programMutantsMendel config ast = undefined -- nub $ mutatesNMendel (applicableOpsMendel config ast) ast fstOrder
   where fstOrder = 1 -- first order
 
 -- | Returns all mutation operators
@@ -176,7 +177,7 @@ applicableOpsMendel ::
      Config                   -- ^ Configuration
   -> ModuleM_                 -- ^ Module to mutate
   -> [(MuVar,MuOpMendel)]           -- ^ Returns mutation operators
-applicableOpsMendel config ast = relevantOpsMendel ast opsList
+applicableOpsMendel config ast = undefined -- relevantOpsMendel ast opsList
   where opsList = concatMap spread [
             --(MutatePatternMatch, selectFnMatches ast),
             --(MutateValues, selectLiteralOps ast),
@@ -221,8 +222,8 @@ putDecl (Module a b c d _) decls = Module a b c d decls
 putDecl m _ = m
 
 -- TODO
-putDeclMendel :: ModuleM_ -> [DeclM_] -> ModuleM_
-putDeclMendel m decls = m {GHC.hsmodDecls = map GHC.noLoc decls}
+putDeclMendel :: ModuleM_ -> [GHC.HsDecl GHC.GhcPs] -> ModuleM_
+putDeclMendel m decls = undefined -- m {GHC.hsmodDecls = map GHC.wrapXRec decls}
 
 -- | First and higher order mutation. The actual apply of mutation operators,
 -- and generation of mutants happens here.
@@ -255,7 +256,7 @@ mutate (v, op) (_v, _s, m) = map (v,toSpan $ getSpan op, ) $ once (mkMpMuOp op) 
 
 -- TODO
 mutateMendel :: (MuVar, MuOpMendel) -> (MuVar, Span, ModuleM_) -> [(MuVar, Span, ModuleM_)]
-mutateMendel (v, op) (_v, _s, m) = map (v,toSpan $ getSpan op, ) $ once (mkMpMuOpMendel op) m \\ [m]
+mutateMendel (v, op) (_v, _s, m) = undefined -- map (v,toSpan $ getSpanMendel op, ) $ once (mkMpMuOpMendel op) m \\ [m]
 
 -- | Generate sub-arrays with one less element except when we have only
 -- a single element.
