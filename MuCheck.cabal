@@ -54,7 +54,9 @@ library
                     temporary >= 1.1,
                     hashable >= 1.2,
                     hpc >= 0.5.1.1,
-                    template-haskell >= 2.5.0
+                    template-haskell >= 2.5.0,
+                    ghc-lib-parser ==9.6.2.20230523,
+                    mendel
   default-language: Haskell2010
   hs-source-dirs:   src
 
@@ -72,7 +74,9 @@ executable mucheck
                     temporary >= 1.1,
                     hashable >= 1.2,
                     hpc >= 0.5.1.1,
-                    template-haskell >= 2.5.0
+                    template-haskell >= 2.5.0,
+                    ghc-lib-parser ==9.6.2.20230523,
+                    mendel
   default-language: Haskell2010
   hs-source-dirs:   src
 
@@ -102,5 +106,7 @@ test-suite spec
                     temporary >= 1.1,
                     hashable >= 1.2,
                     hpc >= 0.5.1.1,
-                    template-haskell >= 2.5.0
+                    template-haskell >= 2.5.0,
+                    ghc-lib-parser ==9.6.2.20230523,
+                    mendel
   build-tool-depends: hspec-discover:hspec-discover

@@ -1,0 +1,6 @@
+packages: .
+
+source-repository-package
+  type: git
+  location: https://github.com/niwo33/mendel
+  branch: origin/fix-mutation

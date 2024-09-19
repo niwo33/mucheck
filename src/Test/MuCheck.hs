@@ -4,7 +4,8 @@ module Test.MuCheck (mucheck) where
 
 import Control.Monad (liftM)
 import Test.MuCheck.Mutation
-import Test.MuCheck.Config
+import Test.Mendel.Config
+import Test.Mendel.MutationVariant
 import Test.MuCheck.Utils.Common
 import Test.MuCheck.Interpreter (evaluateMutants, MutantSummary(..))
 import Test.MuCheck.TestAdapter
@@ -52,7 +53,7 @@ sampler config mv = do
                                                     MutateOther []]
   rSample (maxNumMutants config) ms
 
-getSampled :: Config -> [Mutant] -> MuVar -> IO [Mutant]
+getSampled :: Config -> [Mutant] -> MuVariant -> IO [Mutant]
 getSampled config ms muvar = rSampleF (getSample muvar config) $ filter (mutantIs muvar) ms
   where mutantIs mvar Mutant{..} = mvar `similar` _mtype
 
