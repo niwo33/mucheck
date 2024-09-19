@@ -4,7 +4,7 @@ module Test.MuCheck.Mutation where
 
 import Data.Generics (Typeable, mkMp, listify)
 import Data.List(nub, (\\), permutations, partition)
-import Control.Monad (liftM)
+import Control.Monad (liftM, forM)
 import qualified GHC.Types.SrcLoc as GHC
 
 import Test.MuCheck.Tix
@@ -14,6 +14,7 @@ import qualified  Test.Mendel.Parser as M
 import Test.MuCheck.Utils.Syb
 import Test.MuCheck.Utils.Common
 import Test.Mendel.Config
+import Test.Mendel.Printer
 import Test.MuCheck.TestAdapter
 import System.Directory.Internal.Prelude (exitFailure)
 
@@ -34,16 +35,21 @@ genMutantsWith ::
   -> FilePath                   -- ^ The module we are mutating
   -> FilePath                   -- ^ Coverage information for the module
   -> IO (Int, [Mutant])         -- ^ Returns the covered mutants produced, and the original number
-genMutantsWith _config filename  tix = (-1, genMutantsForSrc defaultConfig (readFile filename))
+genMutantsWith _config filename  tix = do
+  mutants <- genMutantsForSrc defaultConfig filename
+  return (-1, mutants)
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
 -- is defined, and returns the mutated sources
 genMutantsForSrc ::
      Config                   -- ^ Configuration
-  -> String                   -- ^ The module we are mutating
+  -> String                   -- ^ Path to the module we are mutating
   -> IO ([Mutant]) -- ^ Returns the mutants
-genMutantsForSrc config src = map toMutant $ M.programMutants config ast
-  where ast = getASTFromStr src
+genMutantsForSrc config path = do
+  ast <- getASTFromStr path
+  let mutants = M.programMutants config ast
+  pure (map toMutant mutants)
+
 
 -- AST/module-related operations
 
@@ -52,5 +58,5 @@ getASTFromStr :: String -> IO (Module_)
 getASTFromStr fname = do 
     mmod <- M.parseModule fname
     case mmod of 
-      Just (GHC.L _ mod) -> mod
+      Just (GHC.L _ mod) -> pure mod
       Nothing -> exitFailure

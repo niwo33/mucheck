@@ -6,7 +6,10 @@ import qualified Language.Haskell.Interpreter as I
 import Data.Typeable
 import Test.Mendel.Config
 import Test.Mendel.MutationVariant
+import Test.Mendel.MutationOperator (Module_)
 import Test.MuCheck.Tix
+import Trace.Hpc.Util (toHpcPos)
+import qualified GHC.Utils.Outputable as GHC
 
 -- | Wrapper for interpreter output
 data Summarizable a => InterpreterOutput a = Io {_io :: Either I.InterpreterError a, _ioLog::String}
@@ -16,8 +19,12 @@ data Mutant = Mutant { _mutant::String, _mtype::MuVariant, _mspan::Span}
   deriving (Eq, Show)
 
 -- | Convert a tuple to a mutant
-toMutant :: (MuVariant, Span, String) -> Mutant
-toMutant (m,s,str) = Mutant {_mutant = str, _mtype = m, _mspan = s}
+toMutant :: (MuVariant, (Int, Int, Int, Int), Module_) -> Mutant
+toMutant (m,s,mod) =
+  let
+    p = GHC.renderWithContext GHC.defaultSDocContext (GHC.ppr mod)
+  in
+    Mutant {_mutant = p, _mtype = m, _mspan = toHpcPos s}
 
 
 -- | Holding test information
