@@ -28,8 +28,6 @@ source-repository    this
 
 library
   exposed-modules:  Test.MuCheck,
-                    Test.MuCheck.MuOp,
-                    Test.MuCheck.Config,
                     Test.MuCheck.Interpreter,
                     Test.MuCheck.Mutation,
                     Test.MuCheck.Utils.Syb,
@@ -39,7 +37,6 @@ library
                     Test.MuCheck.TestAdapter.AssertCheck,
                     Test.MuCheck.TestAdapter.AssertCheckAdapter,
                     Test.MuCheck.AnalysisSummary,
-                    Test.MuCheck.Utils.Helpers,
                     Test.MuCheck.Tix,
   ghc-options:      -Wall
   build-depends:    base >=4 && <5,
