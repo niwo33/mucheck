@@ -25,12 +25,14 @@ mucheck :: (Show b, Summarizable b, TRun a b) =>
   -> FilePath                                              -- ^ The HPC <coverage>.tix file
   -> IO (MAnalysisSummary, [MutantSummary])                -- ^ Returns a tuple of full summary, and individual mutant results.
 mucheck moduleFile tix = do
+
+  let fn = getName moduleFile
+
   -- get tix here.
-  (len, mutants) <- genMutants (getName moduleFile) tix
+  (len, mutants) <- genMutants fn tix
   -- Should we do random sample on covering alone or on the full?
   smutants <- sampler defaultConfig mutants
-  -- tests <- getAllTests (getName moduleFile)
-  let tests = ["sortEmpty","sortSorted","sortRev","sortSame","sortNeg"]
+  tests <- getAllTests fn
   (fsum', msum) <- evaluateMutants moduleFile smutants (map (genTest moduleFile) tests)
   -- set the original size of mutants. (We report the results based on original
   -- number of mutants, not just the covered ones.)
@@ -57,5 +59,3 @@ sampler config mv = do
 getSampled :: Config -> [Mutant] -> MuVariant -> IO [Mutant]
 getSampled config ms muvar = rSampleF (getSample muvar config) $ filter (mutantIs muvar) ms
   where mutantIs mvar Mutant{..} = mvar `similar` _mtype
-
-getAllTests = undefined

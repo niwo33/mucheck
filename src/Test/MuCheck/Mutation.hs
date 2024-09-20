@@ -40,7 +40,7 @@ genMutantsWith ::
   -> FilePath                   -- ^ The module we are mutating
   -> FilePath                   -- ^ Coverage information for the module
   -> IO (Int, [Mutant])         -- ^ Returns the covered mutants produced, and the original number
-genMutantsWith _config filename  tix = do
+genMutantsWith _config filename tix = do
   mutants <- genMutantsForSrc defaultConfig filename
   return (-1, mutants)
 
@@ -83,10 +83,6 @@ splitAnnotations ast = partition fn $ getDecla ast
   where fn x = functionName x `elem` getAnnotatedTests ast --(functionName x ++ pragmaName x) `elem` getAnnotatedTests ast
         -- only one of pragmaName or functionName will be present at a time.
 
--- | Returns the annotated tests and their annotations
-getAnnotatedTests :: Module_ -> [String]
-getAnnotatedTests ast = concatMap (getAnn ast) ["Test","TestSupport"]
-
 -- | get all annotated functions
 getAnn :: Module_ -> String -> [String]
 getAnn m s =  [conv ann | ann <- listify isAnn m]
@@ -116,3 +112,17 @@ functionName _                                   = []
 -- pragmaName :: GHC.HsDecl GHC.GhcPs -> String
 -- pragmaName (AnnPragma _ (Ann _l (Ident _li n) (Lit _ll (String _ls _t _)))) = n
 -- pragmaName _ = []
+
+
+-- Find tests 
+
+-- | Returns the annotated tests and their annotations
+getAnnotatedTests :: Module_ -> [String]
+getAnnotatedTests ast = concatMap (getAnn ast) ["Test","TestSupport"]
+
+-- | given the module name, return all marked tests
+getAllTests :: String -> IO [String]
+getAllTests modname = do
+    ast <- getASTFromStr modname
+    
+    return (getAnn ast "Test")
