@@ -19,12 +19,8 @@ data Mutant = Mutant { _mutant::String, _mtype::MuVariant, _mspan::Span}
   deriving (Eq, Show)
 
 -- | Convert a tuple to a mutant
-toMutant :: (MuVariant, (Int, Int, Int, Int), Module_) -> Mutant
-toMutant (m,s,mod) =
-  let
-    p = GHC.renderWithContext GHC.defaultSDocContext (GHC.ppr mod)
-  in
-    Mutant {_mutant = p, _mtype = m, _mspan = toHpcPos s}
+toMutant :: (MuVariant, (Int, Int, Int, Int), String) -> Mutant
+toMutant (m,s,str) = Mutant {_mutant = str, _mtype = m, _mspan = toHpcPos s}
 
 
 -- | Holding test information

@@ -12,6 +12,7 @@ import qualified GHC.Hs as GHC
 import qualified GHC.Types.Name.Occurrence as GHC
 import qualified GHC.Types.Name.Reader as GHC
 import qualified GHC.Data.FastString as GHC
+import qualified GHC.Utils.Outputable as GHC
 
 import Test.MuCheck.Tix
 import qualified Test.Mendel.Mutation as M
@@ -57,8 +58,12 @@ genMutantsForSrc config path = do
   let (onlyAnn, noAnn) = splitAnnotations origAst
       ast = putDecl origAst noAnn
       mutants = M.programMutants config ast
+      annmutants = map (apTh (withAnn onlyAnn)) mutants
+      
+  pure (map (toMutant . apTh (GHC.renderWithContext GHC.defaultSDocContext . GHC.ppr)) annmutants)
 
-  pure (map toMutant mutants)
+withAnn :: [GHC.LHsDecl GHC.GhcPs] -> Module_ -> Module_
+withAnn decls mod = putDecl mod $ getDecla mod ++ decls
 
 
 -- AST/module-related operations
