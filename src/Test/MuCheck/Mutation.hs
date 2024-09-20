@@ -5,7 +5,13 @@ module Test.MuCheck.Mutation where
 import Data.Generics (Typeable, mkMp, listify)
 import Data.List(nub, (\\), permutations, partition)
 import Control.Monad (liftM, forM)
+
 import qualified GHC.Types.SrcLoc as GHC
+import qualified Language.Haskell.Syntax.Decls as GHC
+import qualified GHC.Hs as GHC
+import qualified GHC.Types.Name.Occurrence as GHC
+import qualified GHC.Types.Name.Reader as GHC
+import qualified GHC.Data.FastString as GHC
 
 import Test.MuCheck.Tix
 import qualified Test.Mendel.Mutation as M
@@ -44,10 +50,14 @@ genMutantsWith _config filename  tix = do
 genMutantsForSrc ::
      Config                   -- ^ Configuration
   -> String                   -- ^ Path to the module we are mutating
-  -> IO ([Mutant]) -- ^ Returns the mutants
+  -> IO [Mutant] -- ^ Returns the mutants
 genMutantsForSrc config path = do
-  ast <- getASTFromStr path
-  let mutants = M.programMutants config ast
+  origAst <- getASTFromStr path
+
+  let (onlyAnn, noAnn) = splitAnnotations origAst
+      ast = putDecl origAst noAnn
+      mutants = M.programMutants config ast
+
   pure (map toMutant mutants)
 
 
@@ -60,3 +70,47 @@ getASTFromStr fname = do
     case mmod of 
       Just (GHC.L _ mod) -> pure mod
       Nothing -> exitFailure
+
+
+-- Annotation related operations
+
+-- | Split declarations of the module to annotated and non annotated.
+splitAnnotations :: Module_ -> ([GHC.LHsDecl GHC.GhcPs], [GHC.LHsDecl GHC.GhcPs])
+splitAnnotations ast = partition fn $ getDecla ast
+  where fn x = functionName x `elem` getAnnotatedTests ast --(functionName x ++ pragmaName x) `elem` getAnnotatedTests ast
+        -- only one of pragmaName or functionName will be present at a time.
+
+-- | Returns the annotated tests and their annotations
+getAnnotatedTests :: Module_ -> [String]
+getAnnotatedTests ast = concatMap (getAnn ast) ["Test","TestSupport"]
+
+-- | get all annotated functions
+getAnn :: Module_ -> String -> [String]
+getAnn m s =  [conv ann | ann <- listify isAnn m]
+  where isAnn :: GHC.AnnDecl GHC.GhcPs -> Bool
+        isAnn (GHC.HsAnnotation _ _ (GHC.L _ (GHC.HsLit _ (GHC.HsString _ e)))) = e == GHC.mkFastString s
+        isAnn _ = False
+        conv (GHC.HsAnnotation _ (GHC.ValueAnnProvenance (GHC.L _ (GHC.Unqual n))) _) = GHC.occNameString n
+        conv (GHC.HsAnnotation _ (GHC.TypeAnnProvenance (GHC.L _ (GHC.Unqual n))) _) = GHC.occNameString n
+
+-- | Get the embedded declarations from a module.
+getDecla :: Module_ -> [GHC.LHsDecl GHC.GhcPs]
+getDecla (GHC.HsModule _ _ _ _ ldecls) = ldecls
+getDecla _ = []
+
+-- | Put the given declarations into the given module
+putDecl :: Module_ -> [GHC.LHsDecl GHC.GhcPs] -> Module_
+putDecl (GHC.HsModule a b c d _) decls = GHC.HsModule a b c d decls
+putDecl m _ = m
+
+-- | The name of a function
+functionName :: GHC.LHsDecl GHC.GhcPs -> String
+functionName (GHC.L _ (GHC.ValD _ (GHC.FunBind _l (GHC.L _ (GHC.Unqual n)) _))) = GHC.occNameString n
+-- we also consider where clauses
+-- functionName (GHC.ValD _ (GHC.PatBind _l (GHC.L _ (GHC.Unqual n)) _)) = GHC.occNameString n
+functionName _                                   = []
+
+-- | The identifier of declared pragma
+-- pragmaName :: GHC.HsDecl GHC.GhcPs -> String
+-- pragmaName (AnnPragma _ (Ann _l (Ident _li n) (Lit _ll (String _ls _t _)))) = n
+-- pragmaName _ = []

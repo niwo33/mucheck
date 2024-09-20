@@ -58,5 +58,4 @@ getSampled :: Config -> [Mutant] -> MuVariant -> IO [Mutant]
 getSampled config ms muvar = rSampleF (getSample muvar config) $ filter (mutantIs muvar) ms
   where mutantIs mvar Mutant{..} = mvar `similar` _mtype
 
-
 getAllTests = undefined
