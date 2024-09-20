@@ -2,9 +2,8 @@
 -- | This module handles the mutation of different patterns.
 module Test.MuCheck.Mutation where
 
-import Data.Generics (Typeable, mkMp, listify)
-import Data.List(nub, (\\), permutations, partition)
-import Control.Monad (liftM, forM)
+import Data.Generics (listify)
+import Data.List(partition)
 
 import qualified GHC.Types.SrcLoc as GHC
 import qualified Language.Haskell.Syntax.Decls as GHC
@@ -18,7 +17,6 @@ import Test.MuCheck.Tix
 import qualified Test.Mendel.Mutation as M
 import Test.Mendel.MutationOperator
 import qualified  Test.Mendel.Parser as M
-import Test.MuCheck.Utils.Syb
 import Test.MuCheck.Utils.Common
 import Test.Mendel.Config
 import Test.Mendel.Printer
@@ -59,11 +57,11 @@ genMutantsForSrc config path = do
       ast = putDecl origAst noAnn
       mutants = M.programMutants config ast
       annmutants = map (apTh (withAnn onlyAnn)) mutants
-      
+
   pure (map (toMutant . apTh (GHC.renderWithContext GHC.defaultSDocContext . GHC.ppr)) annmutants)
 
 withAnn :: [GHC.LHsDecl GHC.GhcPs] -> Module_ -> Module_
-withAnn decls mod = putDecl mod $ getDecla mod ++ decls
+withAnn decls modu = putDecl modu $ getDecla modu ++ decls
 
 
 -- AST/module-related operations
@@ -73,7 +71,7 @@ getASTFromStr :: String -> IO (Module_)
 getASTFromStr fname = do 
     mmod <- M.parseModule fname
     case mmod of 
-      Just (GHC.L _ mod) -> pure mod
+      Just (GHC.L _ modu) -> pure modu
       Nothing -> exitFailure
 
 
@@ -97,16 +95,15 @@ getAnn m s =  [conv ann | ann <- listify isAnn m]
         isAnn _ = False
         conv (GHC.HsAnnotation _ (GHC.ValueAnnProvenance (GHC.L _ (GHC.Unqual n))) _) = GHC.occNameString n
         conv (GHC.HsAnnotation _ (GHC.TypeAnnProvenance (GHC.L _ (GHC.Unqual n))) _) = GHC.occNameString n
+        conv (GHC.HsAnnotation _ GHC.ModuleAnnProvenance _) = ""
 
 -- | Get the embedded declarations from a module.
 getDecla :: Module_ -> [GHC.LHsDecl GHC.GhcPs]
 getDecla (GHC.HsModule _ _ _ _ ldecls) = ldecls
-getDecla _ = []
 
 -- | Put the given declarations into the given module
 putDecl :: Module_ -> [GHC.LHsDecl GHC.GhcPs] -> Module_
-putDecl (GHC.HsModule a b c d _) decls = GHC.HsModule a b c d decls
-putDecl m _ = m
+putDecl (GHC.HsModule a b c d _) = GHC.HsModule a b c d
 
 -- | The name of a function
 functionName :: GHC.LHsDecl GHC.GhcPs -> String
