@@ -41,27 +41,27 @@ genMutantsWith ::
   -> FilePath                   -- ^ Coverage information for the module
   -> IO (Int, [Mutant])         -- ^ Returns the covered mutants produced, and the original number
 genMutantsWith _config filename tix = do
-  mutants <- genMutantsForSrc defaultConfig filename
-  return (-1, mutants)
+    ast <- getASTFromStr filename
+    let modul = getModuleName ast
+        mutants :: [Mutant]
+        mutants = genMutantsForSrc defaultConfig ast
+
+    c <- getUnCoveredPatches tix modul
+
+    return $ case c of
+                Nothing -> (-1, mutants)
+                Just v -> (length mutants, removeUncovered v mutants)
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
 -- is defined, and returns the mutated sources
 genMutantsForSrc ::
      Config                   -- ^ Configuration
-  -> String                   -- ^ Path to the module we are mutating
-  -> IO [Mutant] -- ^ Returns the mutants
-genMutantsForSrc config path = do
-  origAst <- getASTFromStr path
-
-  let (onlyAnn, noAnn) = splitAnnotations origAst
-      ast = putDecl origAst noAnn
-      mutants = M.programMutants config ast
-      annmutants = map (apTh (withAnn onlyAnn)) mutants
-
-  pure (map (toMutant . apTh (GHC.renderWithContext GHC.defaultSDocContext . GHC.ppr)) annmutants)
-
-withAnn :: [GHC.LHsDecl GHC.GhcPs] -> Module_ -> Module_
-withAnn decls modu = putDecl modu $ getDecla modu ++ decls
+  -> Module_                   -- ^ The module we are mutating
+  -> [Mutant] -- ^ Returns the mutants
+genMutantsForSrc config origAst = map (toMutant . apTh (GHC.renderWithContext GHC.defaultSDocContext . GHC.ppr . withAnn)) $ M.programMutants config ast
+    where (onlyAnn, noAnn) = splitAnnotations origAst
+          ast = putDecl origAst noAnn
+          withAnn modu = putDecl modu $ getDecla modu ++ onlyAnn
 
 
 -- AST/module-related operations
@@ -74,6 +74,18 @@ getASTFromStr fname = do
       Just (GHC.L _ modu) -> pure modu
       Nothing -> exitFailure
 
+
+-- Operators for Coverage
+-- | Get the module name from ast
+getModuleName :: Module_ -> String
+getModuleName (GHC.HsModule _ (Just (GHC.L _ (GHC.ModuleName name))) _ _ _) = GHC.unpackFS name
+getModuleName _ = ""
+
+removeUncovered :: [Span] -> [Mutant] -> [Mutant]
+removeUncovered uspans mutants = filter isMCovered mutants -- get only covering mutants.
+  where  isMCovered :: Mutant -> Bool
+         -- | is it contained in any of the spans? if it is, then return false.
+         isMCovered Mutant{..} = not $ any (insideSpan _mspan) uspans
 
 -- Annotation related operations
 
