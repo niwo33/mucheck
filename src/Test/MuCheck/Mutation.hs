@@ -19,7 +19,6 @@ import Test.Mendel.MutationOperator
 import qualified  Test.Mendel.Parser as M
 import Test.MuCheck.Utils.Common
 import Test.Mendel.Config
-import Test.Mendel.Printer
 import Test.MuCheck.TestAdapter
 import System.Directory.Internal.Prelude (exitFailure)
 
@@ -103,7 +102,7 @@ getAnn m s =  [conv ann | ann <- listify isAnn m]
         isAnn _ = False
         conv (GHC.HsAnnotation _ (GHC.ValueAnnProvenance (GHC.L _ (GHC.Unqual n))) _) = GHC.occNameString n
         conv (GHC.HsAnnotation _ (GHC.TypeAnnProvenance (GHC.L _ (GHC.Unqual n))) _) = GHC.occNameString n
-        conv (GHC.HsAnnotation _ GHC.ModuleAnnProvenance _) = ""
+        conv _ = ""
 
 -- | Get the embedded declarations from a module.
 getDecla :: Module_ -> [GHC.LHsDecl GHC.GhcPs]
